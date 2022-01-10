@@ -1,4 +1,7 @@
-﻿using System;
+﻿using IWshRuntimeLibrary;
+using System;
+using System.IO;
+using System.Linq;
 
 namespace AppLoader
 {
@@ -8,14 +11,24 @@ namespace AppLoader
         {
             Console.WriteLine("Enter The App You Want To Run:");
             var appToStart = Console.ReadLine();
-            System.Diagnostics.Process process = new System.Diagnostics.Process();
-            System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo();
-            startInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
-            startInfo.FileName = "cmd.exe";
-            startInfo.Arguments = $"/C start {appToStart}";
-            startInfo.WorkingDirectory = "C:\\Users\\The Little Monkey\\source\\repos\\AppLoader\\Apps";
-            process.StartInfo = startInfo;
-            process.Start();
+            var filePath = Tools.GetBaseFilePath();
+            string[] dirs = Directory.GetDirectories(filePath);
+            foreach (var dir in dirs)
+            {
+                if (dir == "Apps")
+                {
+                    break;
+                }
+                if (dirs.ToList().Last() == dir)
+                {
+                    Tools.SendCommand($"mkdir Apps");
+                }
+            }
+            Tools.SendCommand($"start Apps\\{appToStart}");
+
+            
         }
+
+
     }
 }
