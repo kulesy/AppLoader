@@ -37,11 +37,15 @@ namespace AppLoaderClassLibrary
 
         public static void CreateShortcut(string appFilePath)
         {
-            WshShell shell = new WshShell();
-            string shortcutAddress = GetBaseFilePath() + @$"Apps\{GetAppFromPath(appFilePath)}.lnk";
-            IWshShortcut shortcut = (IWshShortcut)shell.CreateShortcut(shortcutAddress);
-            shortcut.TargetPath = appFilePath;
-            shortcut.Save();
+            if (appFilePath.Contains("Update.exe") is false)
+            {
+                WshShell shell = new WshShell();
+                string shortcutAddress = GetBaseFilePath() + @$"Apps\{GetAppFromPath(appFilePath)}.lnk";
+                IWshShortcut shortcut = (IWshShortcut)shell.CreateShortcut(shortcutAddress);
+                shortcut.TargetPath = appFilePath;
+                shortcut.Save();
+            }
+            throw new();
         }
 
         public static string GetAppFromPath(string path)

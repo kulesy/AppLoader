@@ -5,5 +5,6 @@ namespace AppLoaderClassLibrary.Endpoints
     public interface IAppEndpoint
     {
         List<string> GetListOfApps();
+        void MakeAppFolder();
     }
 }

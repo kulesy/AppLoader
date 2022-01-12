@@ -16,19 +16,19 @@ namespace AppLoaderUI.ViewModels
     {
         public ShellViewModel(IAppEndpoint appEndpoint)
         {
-            List<string> dirs = Directory.GetDirectories(Tools.GetBaseFilePath()).ToList();
-            foreach (var dir in dirs)
-            {
-                if (dir == "Apps")
-                {
-                    break;
-                }
-                if (dirs[dirs.Count - 1] == dir)
-                {
-                    Tools.SendCommand($"mkdir Apps");
-                }
-            }
+            
             _appEndpoint = appEndpoint;
+        }
+
+        protected override async void OnViewLoaded(object view)
+        {
+            await LoadApps();
+        }
+
+        public async Task LoadApps()
+        {
+            _appEndpoint.MakeAppFolder();
+            await Task.Delay(1000);
             var apps = _appEndpoint.GetListOfApps();
             Apps = new BindingList<string>(apps);
         }
@@ -49,6 +49,7 @@ namespace AppLoaderUI.ViewModels
         {
             
             OpenFileDialog openFileDialog = new OpenFileDialog();
+            openFileDialog.Filter = "exe files (*.exe)|*.exe|All files (*.*)|*.*";
             if (openFileDialog.ShowDialog() == true)
             {
                 Tools.CreateShortcut(openFileDialog.FileName);

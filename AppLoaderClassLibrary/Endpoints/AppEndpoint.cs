@@ -9,6 +9,21 @@ namespace AppLoaderClassLibrary.Endpoints
 {
     public class AppEndpoint : IAppEndpoint
     {
+        public void MakeAppFolder()
+        {
+            List<string> dirs = Directory.GetDirectories(Tools.GetBaseFilePath()).ToList();
+            foreach (var dir in dirs)
+            {
+                if (dir == "Apps")
+                {
+                    break;
+                }
+                if (dirs[dirs.Count - 1] == dir)
+                {
+                    Tools.SendCommand($"mkdir Apps");
+                }
+            }
+        }
         public List<string> GetListOfApps()
         {
             var filePath = Tools.GetBaseFilePath() + @"\Apps";
