@@ -7,9 +7,9 @@ using System.Threading.Tasks;
 
 namespace AppLoaderClassLibrary.Models
 {
-    public class ShortcutModel
+    public class AppModel
     {
         public string FileName { get; set; }
-        public Icon FileIcon { get; set; }
+        public string FileIcon { get; set; }
     }
 }

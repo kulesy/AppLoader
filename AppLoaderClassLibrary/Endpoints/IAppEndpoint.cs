@@ -1,10 +1,12 @@
-﻿using System.Collections.Generic;
+﻿using AppLoaderClassLibrary.Models;
+using System.Collections.Generic;
 
 namespace AppLoaderClassLibrary.Endpoints
 {
     public interface IAppEndpoint
     {
-        List<string> GetListOfApps();
+        void CleanAppsFolder();
+        List<AppModel> GetListOfApps();
         void MakeAppFolder();
     }
 }

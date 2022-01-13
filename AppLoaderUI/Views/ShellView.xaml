@@ -23,16 +23,31 @@
             <RowDefinition Height="20"/>
         </Grid.RowDefinitions>
 
-        <ListBox x:Name="Apps" Grid.Row="1" Grid.Column="1" Background="#FFEEF0F2">
+        <ListBox x:Name="Apps" Grid.Row="1" Grid.Column="1" Background="#FFEEF0F2"
+                 SelectedItem="{Binding SelectedApp}">
             <ListBox.ItemTemplate>
-                <DataTemplate>
-                    <TextBlock Text="{Binding}" FontSize="24"></TextBlock>
+                <DataTemplate x:Name="ListText">
+                    <StackPanel Orientation="Horizontal">
+                        <Image Source="{Binding FileIcon}" Width="40" Height="40"></Image>
+                        <TextBlock Text="{Binding FileName}" VerticalAlignment="Center"
+                                   FontSize="24" Margin="20, 0, 0, 0" ></TextBlock>
+                    </StackPanel>
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
         <Button x:Name="StartButton" Grid.Row="1" Grid.Column="2" 
                 Height="50" Width="300" FontSize="30" Margin="0, 0, 0, 60">Start Apps</Button>
-        <Button x:Name="UploadButton" Grid.Row="1" Grid.Column="2" 
-                Height="50" Width="300" FontSize="30" Margin="0, 60, 0, 0">Add Apps</Button>
+        <StackPanel Orientation="Horizontal" Grid.Row="1" Grid.Column="2" 
+                    Height="50" Width="300" Margin="0, 60, 0, 0" >
+            <Button x:Name="AddButton" Width="145" FontSize="25">Add App</Button>
+            <Button x:Name="DeleteButton" Width="145" FontSize="25" 
+                    Margin="10, 0, 0, 0" >Delete App</Button>
+
+        </StackPanel>
+        <TextBlock x:Name="ErrorMessage" Grid.Row="1" Grid.Column="2"
+                    Margin="0, 190, 0, 0" Height="50" 
+                   Foreground="Red" MaxWidth="300" TextWrapping="Wrap"
+                   TextAlignment="Center" FontSize="20"
+                   Visibility="{Binding IsErrorVisible, Converter={StaticResource BooleanToVisibilityConverter}}"></TextBlock>
     </Grid>
 </Page>
