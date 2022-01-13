@@ -35,8 +35,14 @@
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
-        <Button x:Name="StartButton" Grid.Row="1" Grid.Column="2" 
-                Height="50" Width="300" FontSize="30" Margin="0, 0, 0, 60">Start Apps</Button>
+        <StackPanel Orientation="Horizontal" Grid.Row="1" Grid.Column="2" 
+                    Height="50" Width="300" Margin="0, 0, 0, 60">
+            <Button x:Name="StartAllButton" Width="145" FontSize="25" >Start All</Button>
+            <Button x:Name="StartButton" Width="145" FontSize="25"
+                    Margin="10, 0, 0, 0">Start App</Button>
+
+        </StackPanel>
+        
         <StackPanel Orientation="Horizontal" Grid.Row="1" Grid.Column="2" 
                     Height="50" Width="300" Margin="0, 60, 0, 0" >
             <Button x:Name="AddButton" Width="145" FontSize="25">Add App</Button>

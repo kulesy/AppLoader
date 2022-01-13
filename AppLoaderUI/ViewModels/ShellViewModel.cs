@@ -50,6 +50,7 @@ namespace AppLoaderUI.ViewModels
                 _selectedApp = value;
                 NotifyOfPropertyChange(() => SelectedApp);
                 NotifyOfPropertyChange(() => CanDeleteButton);
+                NotifyOfPropertyChange(() => CanStartButton);
             }
         }
 
@@ -91,6 +92,19 @@ namespace AppLoaderUI.ViewModels
             }
         }
 
+        public bool CanStartButton
+        {
+            get
+            {
+                bool output = false;
+                if (SelectedApp is not null)
+                {
+                    output = true;
+                }
+                return output;
+            }
+        }
+
         public async Task LoadApps()
         {
             _appEndpoint.CleanAppsFolder();
@@ -101,12 +115,18 @@ namespace AppLoaderUI.ViewModels
             Apps = new BindingList<AppModel>(apps);
         }
 
-        public void StartButton()
+        public void StartAllButton()
         {
+            var baseFilePath = _appEndpoint.GetBaseFilePathForCommands();
             foreach (var app in Apps)
             {
-                Tools.SendCommand(@$"start Apps\{app}");
+                _appEndpoint.SendCommand($@"start {baseFilePath + "Apps" + $@"\{app.FileName}.lnk"}");
             }
+        }
+        public void StartButton()
+        {
+            var baseFilePath = _appEndpoint.GetBaseFilePathForCommands();
+            _appEndpoint.SendCommand($@"start {baseFilePath + "Apps" + $@"\{SelectedApp.FileName}.lnk"}");
         }
         public void AddButton()
         {
@@ -116,7 +136,7 @@ namespace AppLoaderUI.ViewModels
             {
                 try
                 {
-                    Tools.CreateShortcut(openFileDialog.FileName);
+                    _appEndpoint.CreateShortcut(openFileDialog.FileName);
                     ErrorMessage = "";
                 }
                 catch (Exception ex)
@@ -136,8 +156,8 @@ namespace AppLoaderUI.ViewModels
             var appName = SelectedApp.FileName;
             Apps.Remove(SelectedApp);
             SelectedApp = null;
-            var baseFilePath = Tools.GetBaseFilePathForCommands();
-            Tools.SendCommand($"del /f {baseFilePath + "Apps" + $@"\{appName}*"}");
+            var baseFilePath = _appEndpoint.GetBaseFilePathForCommands();
+            _appEndpoint.SendCommand($"del /f {baseFilePath + "Apps" + $@"\{appName}*"}");
         }
     }
 }
