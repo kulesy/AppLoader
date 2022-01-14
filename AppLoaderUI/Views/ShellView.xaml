@@ -50,8 +50,10 @@
                     Margin="10, 0, 0, 0" >Delete App</Button>
 
         </StackPanel>
+        <CheckBox IsChecked="{Binding IsOnStartup}" Grid.Row="1" Grid.Column="2" 
+                  Margin="0, 160, 0, 0" Width="auto" Height="30" FontSize="13" HorizontalAlignment="Center"> Run on startup of machine </CheckBox>
         <TextBlock x:Name="ErrorMessage" Grid.Row="1" Grid.Column="2"
-                    Margin="0, 190, 0, 0" Height="50" 
+                    Margin="0, 230, 0, 0" Height="50" 
                    Foreground="Red" MaxWidth="300" TextWrapping="Wrap"
                    TextAlignment="Center" FontSize="20"
                    Visibility="{Binding IsErrorVisible, Converter={StaticResource BooleanToVisibilityConverter}}"></TextBlock>

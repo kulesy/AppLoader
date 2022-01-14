@@ -1,5 +1,6 @@
 ﻿using AppLoaderClassLibrary.Models;
 using IWshRuntimeLibrary;
+using Shell32;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -33,7 +34,7 @@ namespace AppLoaderClassLibrary.Endpoints
         }
         public List<AppModel> GetListOfApps()
         {
-            var filePath = GetBaseFilePath() + @"Apps";
+            var filePath = GetBaseFilePath() + @"\Apps";
             //Get list of files with only .lnk extension
             List<string> shortcutPaths = Directory.GetFiles(filePath).Where(e => e.Contains(".lnk")).ToList();
             List<AppModel> apps = new();
@@ -54,7 +55,7 @@ namespace AppLoaderClassLibrary.Endpoints
         {
             //This is used for cleaning up any icon files that are unassigned to a shortcut.
             //It is neccessary as the icons cannot be deleted when the app is running.
-            var filePath = GetBaseFilePath() + @"Apps";
+            var filePath = GetBaseFilePath() + @"\Apps";
             //Get list of files with only .lnk extension
             List<string> shortcutPaths = Directory.GetFiles(filePath).Where(e => e.Contains(".lnk")).ToList();
             //Get list of files with only .ico extension
@@ -64,12 +65,12 @@ namespace AppLoaderClassLibrary.Endpoints
                 //if only icon files in folder delete all
                 if (shortcutPaths.Count() == 0)
                 {
-                    SendCommand($"del /f {GetBaseFilePathForCommands() + "Apps" + $@"\*.ico"}");
+                    SendCommand($"del /f {GetBaseFilePathForCommands() + @"\Apps" + $@"\*.ico"}");
                 }
                 //if only shorcut files in folder delete all
                 else if (iconPaths.Count() == 0)
                 {
-                    SendCommand($"del /f {GetBaseFilePathForCommands() + "Apps" + $@"\*.lnk"}");
+                    SendCommand($"del /f {GetBaseFilePathForCommands() + @"\Apps" + $@"\*.lnk"}");
                 }
                 //Reflect each icon paths against the shortcut paths to find any unassigned icons
                 foreach (var iconPath in iconPaths)
@@ -84,7 +85,7 @@ namespace AppLoaderClassLibrary.Endpoints
                         // If this if statement is triggered it means that the icon file is unassigned to a shortcut file, therefore delete it
                         if (shortcutPaths[shortcutPaths.Count - 1] == shortcutPath)
                         {
-                            SendCommand($"del /f {GetBaseFilePathForCommands() + "Apps" + $@"\{GetAppFromPath(iconPath)}.ico"}");
+                            SendCommand($"del /f {GetBaseFilePathForCommands() + @"\Apps" + $@"\{GetAppFromPath(iconPath)}.ico"}");
                         }
                     }
                 }
@@ -101,12 +102,7 @@ namespace AppLoaderClassLibrary.Endpoints
             var fullBasePath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
             var fullBasePathSplit = fullBasePath.Split(@"\");
             var basePathSplit = fullBasePathSplit.SkipLast(4);
-            var basePath = "";
-            foreach (var path in basePathSplit)
-            {
-                var normalizedPath = path;
-                basePath += normalizedPath + @"\";
-            }
+            var basePath = string.Join(@"\", basePathSplit);
             return basePath;
         }
 
@@ -115,18 +111,20 @@ namespace AppLoaderClassLibrary.Endpoints
             //Boiler plate code from GetBaseFilePath()
             //But is neccesary some commands in the cmd require folders that contain spaces to be in quotes
             var fullBasePath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
+            var normalizedfullBasePath = NormalizeFilePath(fullBasePath);
+            var basePathSplit = normalizedfullBasePath.Split(@"\").SkipLast(4);
+            var basePath = string.Join(@"\", basePathSplit);
+            return basePath;
+        }
+
+        public string GetUserProfilePath()
+        {
+            //Boiler plate code from GetBaseFilePath()
+            //But is neccesary some commands in the cmd require folders that contain spaces to be in quotes
+            var fullBasePath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
             var fullBasePathSplit = fullBasePath.Split(@"\");
-            var basePathSplit = fullBasePathSplit.SkipLast(4);
-            var basePath = "";
-            foreach (var path in basePathSplit)
-            {
-                var normalizedPath = path;
-                if (path.Contains(" "))
-                {
-                    normalizedPath = $"\"{path}\"";
-                }
-                basePath += normalizedPath + @"\";
-            }
+            var basePathSplit = fullBasePathSplit.SkipLast(fullBasePathSplit.Count() - 3);
+            var basePath = string.Join(@"\", basePathSplit);
             return basePath;
         }
         public void SendCommand(string command)
@@ -149,25 +147,20 @@ namespace AppLoaderClassLibrary.Endpoints
             proc.WaitForExit();//May need to wait for the process to exit too
         }
 
-        public void CreateShortcut(string appFilePath)
+        public void CreateShortcut(string targetPath, string savePath)
         {
             //For some reason apps redirects to an Update.exe file which cannot launch the desired app
             //Therefore apps that do redirect to an Update.exe file must throw an error
-            if (appFilePath.Contains("Update.exe") is false)
+            if (targetPath.Contains("Update.exe") is false)
             {
                 WshShell shell = new WshShell();
                 //Where the shortcut of the app will be saved
-                string shortcutAddress = GetBaseFilePath() + @$"Apps\{GetAppFromPath(appFilePath)}.lnk";
+                string shortcutAddress = savePath; 
                 IWshShortcut shortcut = (IWshShortcut)shell.CreateShortcut(shortcutAddress);
-                //The path of the app that you want to make an shortcut
-                shortcut.TargetPath = appFilePath;
+                //The path of the app that you want to make into a shortcut
+                shortcut.TargetPath = targetPath;
                 shortcut.Save();
 
-                //Creating an icon file with the same naming as the shortcut to display on the UI
-                //Not sure of the reason of the warning, the icon is still created
-                #pragma warning disable CA1416 // Validate platform compatibility
-                System.Drawing.Icon.ExtractAssociatedIcon(appFilePath).ToBitmap().Save(GetBaseFilePath() + $@"Apps\{GetAppFromPath(appFilePath)}.ico");
-                #pragma warning restore CA1416 // Validate platform compatibility
             }
             else
             {
@@ -181,6 +174,45 @@ namespace AppLoaderClassLibrary.Endpoints
             var appNameWithExtension = path.Split(@"\").Last();
             var appName = appNameWithExtension.Split(".").First();
             return appName;
+        }
+
+        [STAThread]
+        public string GetShortcutTargetFile(string shortcutFilename)
+        {
+            string pathOnly = Path.GetDirectoryName(shortcutFilename);
+            string filenameOnly = Path.GetFileName(shortcutFilename);
+
+            Shell shell = new Shell();
+            Shell32.Folder folder = shell.NameSpace(pathOnly);
+            FolderItem folderItem = folder.ParseName(filenameOnly);
+            if (folderItem != null)
+            {
+                ShellLinkObject link = (ShellLinkObject)folderItem.GetLink;
+                return link.Path;
+            }
+
+            return string.Empty;
+        }
+
+        public string NormalizeFilePath(string filePath)
+        {
+            var filePathSplit = filePath.Split(@"\");
+            var basePath = "";
+            foreach (var path in filePathSplit)
+            {
+                var normalizedPath = path;
+                if (path.Contains(" "))
+                {
+                    normalizedPath = $"\"{path}\"";
+                }
+                if (filePathSplit.Last() == path)
+                {
+                    basePath += normalizedPath;
+                    break;
+                }
+                basePath += normalizedPath + @"\";
+            }
+            return basePath;
         }
     }
 }
