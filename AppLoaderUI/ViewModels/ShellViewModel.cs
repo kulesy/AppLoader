@@ -120,8 +120,8 @@ namespace AppLoaderUI.ViewModels
 
         public async Task LoadApps()
         {
-            _appEndpoint.CleanAppsFolder();
             _appEndpoint.MakeAppFolder();
+            _appEndpoint.CleanAppsFolder();
             //App folder needs time to be made before getting list of apps
             await Task.Delay(1000);
             var apps = _appEndpoint.GetListOfApps();

@@ -28,7 +28,7 @@ namespace AppLoaderClassLibrary.Endpoints
                 // If this if statement is triggered it means that no App folder has been found
                 if (dirs[dirs.Count - 1] == dir)
                 {
-                    SendCommand($"mkdir Apps");
+                    SendCommand($@"mkdir {GetBaseFilePathForCommands()}\Apps");
                 }
             }
         }
