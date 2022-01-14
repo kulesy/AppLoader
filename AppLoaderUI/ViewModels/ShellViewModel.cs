@@ -157,22 +157,27 @@ namespace AppLoaderUI.ViewModels
             {
                 try
                 {
-                    var appFolderPath = _appEndpoint.GetBaseFilePath() + @$"\Apps\{_appEndpoint.GetAppFromPath(openFileDialog.FileName)}.lnk";
-                    _appEndpoint.CreateShortcut(openFileDialog.FileName, appFolderPath);
+                    if (Apps.Where(e => e.FileName == _appEndpoint.GetAppFromPath(openFileDialog.FileName)).FirstOrDefault() is null)
+                    {
+                        var appFolderPath = _appEndpoint.GetBaseFilePath() + @$"\Apps\{_appEndpoint.GetAppFromPath(openFileDialog.FileName)}.lnk";
+                        _appEndpoint.CreateShortcut(openFileDialog.FileName, appFolderPath);
 
-                    //Creating an icon file with the same naming as the shortcut to display on the UI
-                    //Not sure of the reason of the warning, the icon is still created
-                    #pragma warning disable CA1416 // Validate platform compatibility
-                    System.Drawing.Icon.ExtractAssociatedIcon(openFileDialog.FileName)
-                        .ToBitmap()
-                        .Save(_appEndpoint.GetBaseFilePath() + $@"\Apps\{_appEndpoint.GetAppFromPath(openFileDialog.FileName)}.ico");
-                    #pragma warning restore CA1416 // Validate platform compatibility
-                    ErrorMessage = "";
+                        //Creating an icon file with the same naming as the shortcut to display on the UI
+                        //Not sure of the reason of the warning, the icon is still created
+                        #pragma warning disable CA1416 // Validate platform compatibility
+                        System.Drawing.Icon.ExtractAssociatedIcon(openFileDialog.FileName)
+                            .ToBitmap()
+                            .Save(_appEndpoint.GetBaseFilePath() + $@"\Apps\{_appEndpoint.GetAppFromPath(openFileDialog.FileName)}.ico");
+                        #pragma warning restore CA1416 // Validate platform compatibility
+                        ErrorMessage = "";
+                    }
                 }
                 catch (Exception ex)
                 {
-
-                    ErrorMessage = ex.Message;
+                    if (ex.Message.Contains("a generic error") is false)
+                    {
+                        ErrorMessage = ex.Message;
+                    }
                 }
             }
             //Refresh binding list of apps
