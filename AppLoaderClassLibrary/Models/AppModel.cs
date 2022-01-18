@@ -9,7 +9,23 @@ namespace AppLoaderClassLibrary.Models
 {
     public class AppModel
     {
-        public string FileName { get; set; }
-        public string FileIcon { get; set; }
+        public string AppName
+        {
+            get { return GetAppName(); }
+        }
+        public string AppPath { get; set; }
+        public string AppIcon { get; set; }
+
+
+        private string GetAppName()
+        {
+            if (AppPath is null)
+            {
+                return "unknown";
+            }
+            var appNameWithExtension = AppPath.Split(@"\").Last();
+            var appName = appNameWithExtension.Remove(appNameWithExtension.Count() - 4);
+            return appName;
+        }
     }
 }
