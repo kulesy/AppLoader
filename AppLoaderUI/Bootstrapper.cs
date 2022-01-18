@@ -1,5 +1,4 @@
-﻿using AppLoaderClassLibrary.Endpoints;
-using AppLoaderUI.ViewModels;
+﻿using AppLoaderUI.ViewModels;
 using Caliburn.Micro;
 using System;
 using System.Collections.Generic;
@@ -24,9 +23,6 @@ namespace AppLoaderUI
             _container
                 .Singleton<IWindowManager, WindowManager>()
                 .Singleton<IEventAggregator, EventAggregator>();
-
-            _container
-                .PerRequest<IAppEndpoint, AppEndpoint>();
 
             GetType().Assembly.GetTypes()
                 .Where(type => type.IsClass)

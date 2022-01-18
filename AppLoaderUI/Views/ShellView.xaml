@@ -28,8 +28,8 @@
             <ListBox.ItemTemplate>
                 <DataTemplate x:Name="ListText">
                     <StackPanel Orientation="Horizontal">
-                        <Image Source="{Binding FileIcon}" Width="40" Height="40"></Image>
-                        <TextBlock Text="{Binding FileName}" VerticalAlignment="Center"
+                        <Image Source="{Binding AppIcon}" Width="40" Height="40"></Image>
+                        <TextBlock Text="{Binding AppName}" VerticalAlignment="Center"
                                    FontSize="24" Margin="20, 0, 0, 0" ></TextBlock>
                     </StackPanel>
                 </DataTemplate>

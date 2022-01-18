@@ -10,15 +10,15 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AppLoaderClassLibrary.Endpoints
+namespace AppLoaderClassLibrary
 {
-    public class AppEndpoint : IAppEndpoint
+    public static class Tools
     {
-        public void MakeAppFolder()
+        public static void MakeAppFolder()
         {
             // Get directories in current base directory and check if App folder is avalible
             // If not then create folder
-            List<string> dirs = Directory.GetDirectories(GetBaseFilePath()).ToList();
+            List<string> dirs = Directory.GetDirectories(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)).ToList();
             foreach (var dir in dirs)
             {
                 if (dir.Contains("Apps"))
@@ -32,9 +32,9 @@ namespace AppLoaderClassLibrary.Endpoints
                 }
             }
         }
-        public List<AppModel> GetListOfApps()
+        public static List<AppModel> GetListOfApps()
         {
-            var filePath = GetBaseFilePath() + @"\Apps";
+            var filePath = Directory.GetCurrentDirectory() + @"\Apps";
             //Get list of files with only .lnk extension
             List<string> shortcutPaths = Directory.GetFiles(filePath).Where(e => e.Contains(".lnk")).ToList();
             List<AppModel> apps = new();
@@ -42,20 +42,18 @@ namespace AppLoaderClassLibrary.Endpoints
             foreach (var path in shortcutPaths)
             {
                 AppModel app = new();
-                var appNameWithExtension = path.Split(@"\").Last();
-                var appName = appNameWithExtension.Remove(appNameWithExtension.Count() - 4);
-                app.FileName = appName;
-                app.FileIcon = filePath + @$"\{appName}" + ".ico";
+                app.AppPath = path;
+                app.AppIcon = filePath + @$"\{app.AppName}" + ".ico";
                 apps.Add(app);
             }
             return apps;
         }
 
-        public void CleanAppsFolder()
+        public static void CleanAppsFolder()
         {
             //This is used for cleaning up any icon files that are unassigned to a shortcut.
             //It is neccessary as the icons cannot be deleted when the app is running.
-            var filePath = GetBaseFilePath() + @"\Apps";
+            var filePath = Directory.GetCurrentDirectory() + @"\Apps";
             //Get list of files with only .lnk extension
             List<string> shortcutPaths = Directory.GetFiles(filePath).Where(e => e.Contains(".lnk")).ToList();
             //Get list of files with only .ico extension
@@ -95,29 +93,27 @@ namespace AppLoaderClassLibrary.Endpoints
 
         // Tools
 
-        public string GetBaseFilePath()
+        public static string GetAppLoaderPath()
         {
             //The base directory starts in a weird folder
             //Therefore some editing of the path needs to be done to bring it to the AppLoader folder
-            var fullBasePath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
-            var fullBasePathSplit = fullBasePath.Split(@"\");
-            var basePathSplit = fullBasePathSplit.SkipLast(4);
-            var basePath = string.Join(@"\", basePathSplit);
-            return basePath;
+            var basePath = Directory.GetCurrentDirectory();
+            var basePathSplit = basePath.Split(@"\").ToList();
+            var appLoaderIndex = basePathSplit.IndexOf("AppLoader");
+            // Determine the number of folders/files need to be skipped
+            var offset = basePathSplit.Count() - appLoaderIndex;
+            offset--;
+            var appLoaderPathSplit = basePathSplit.SkipLast(offset);
+            var appLoaderPath = string.Join(@"\", appLoaderPathSplit);
+            return appLoaderPath;
         }
 
-        public string GetBaseFilePathForCommands()
+        public static string GetBaseFilePathForCommands()
         {
-            //Boiler plate code from GetBaseFilePath()
-            //But is neccesary some commands in the cmd require folders that contain spaces to be in quotes
-            var fullBasePath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
-            var normalizedfullBasePath = NormalizeFilePath(fullBasePath);
-            var basePathSplit = normalizedfullBasePath.Split(@"\").SkipLast(4);
-            var basePath = string.Join(@"\", basePathSplit);
-            return basePath;
+            return NormalizeFilePath(Directory.GetCurrentDirectory());
         }
 
-        public string GetUserProfilePath()
+        public static string GetUserProfilePath()
         {
             //Boiler plate code from GetBaseFilePath()
             //But is neccesary some commands in the cmd require folders that contain spaces to be in quotes
@@ -127,7 +123,7 @@ namespace AppLoaderClassLibrary.Endpoints
             var basePath = string.Join(@"\", basePathSplit);
             return basePath;
         }
-        public void SendCommand(string command)
+        public static void SendCommand(string command)
         {
             var normalizedCommand = "/C " + command;
             Process proc = new Process
@@ -147,7 +143,7 @@ namespace AppLoaderClassLibrary.Endpoints
             proc.WaitForExit();//May need to wait for the process to exit too
         }
 
-        public void CreateShortcut(string targetPath, string savePath)
+        public static void CreateShortcut(string targetPath, string savePath)
         {
             //For some reason apps redirects to an Update.exe file which cannot launch the desired app
             //Therefore apps that do redirect to an Update.exe file must throw an error
@@ -155,7 +151,7 @@ namespace AppLoaderClassLibrary.Endpoints
             {
                 WshShell shell = new WshShell();
                 //Where the shortcut of the app will be saved
-                string shortcutAddress = savePath; 
+                string shortcutAddress = savePath;
                 IWshShortcut shortcut = (IWshShortcut)shell.CreateShortcut(shortcutAddress);
                 //The path of the app that you want to make into a shortcut
                 shortcut.TargetPath = targetPath;
@@ -168,7 +164,7 @@ namespace AppLoaderClassLibrary.Endpoints
             }
         }
 
-        public string GetAppFromPath(string path)
+        public static string GetAppFromPath(string path)
         {
             //Getting just the app name
             var appNameWithExtension = path.Split(@"\").Last();
@@ -177,7 +173,7 @@ namespace AppLoaderClassLibrary.Endpoints
         }
 
         [STAThread]
-        public string GetShortcutTargetFile(string shortcutFilename)
+        public static string GetShortcutTargetFile(string shortcutFilename)
         {
             string pathOnly = Path.GetDirectoryName(shortcutFilename);
             string filenameOnly = Path.GetFileName(shortcutFilename);
@@ -194,7 +190,7 @@ namespace AppLoaderClassLibrary.Endpoints
             return string.Empty;
         }
 
-        public string NormalizeFilePath(string filePath)
+        public static string NormalizeFilePath(string filePath)
         {
             var filePathSplit = filePath.Split(@"\");
             var basePath = "";

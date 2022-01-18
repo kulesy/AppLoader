@@ -1,5 +1,4 @@
 ﻿using AppLoaderClassLibrary;
-using AppLoaderClassLibrary.Endpoints;
 using AppLoaderClassLibrary.Models;
 using Caliburn.Micro;
 using Microsoft.Win32;
@@ -17,14 +16,11 @@ namespace AppLoaderUI.ViewModels
 {
     public class ShellViewModel : Conductor<object>
     {
-        private readonly IAppEndpoint _appEndpoint;
-        public ShellViewModel(IAppEndpoint appEndpoint)
-        {
-            
-            _appEndpoint = appEndpoint;
-        }
         protected override async void OnViewLoaded(object view)
         {
+            // Setting directory to documents folder
+            string appLoaderFolder = Tools.GetAppLoaderPath();
+            Directory.SetCurrentDirectory(appLoaderFolder);
             await LoadApps();
         }
 
@@ -120,11 +116,11 @@ namespace AppLoaderUI.ViewModels
 
         public async Task LoadApps()
         {
-            _appEndpoint.MakeAppFolder();
-            _appEndpoint.CleanAppsFolder();
+            Tools.MakeAppFolder();
+            Tools.CleanAppsFolder();
             //App folder needs time to be made before getting list of apps
             await Task.Delay(1000);
-            var apps = _appEndpoint.GetListOfApps();
+            var apps = Tools.GetListOfApps();
             Apps = new BindingList<AppModel>(apps);
             if (AreAppsInStartup() is true)
             {
@@ -138,16 +134,15 @@ namespace AppLoaderUI.ViewModels
 
         public void StartAllButton()
         {
-            var baseFilePath = _appEndpoint.GetBaseFilePathForCommands();
             foreach (var app in Apps)
             {
-                _appEndpoint.SendCommand($@"start {baseFilePath + @"\Apps" + $@"\{app.FileName}.lnk"}");
+                Tools.SendCommand($@"start Apps\{app.AppName}.lnk");
             }
         }
         public void StartButton()
         {
-            var baseFilePath = _appEndpoint.GetBaseFilePathForCommands();
-            _appEndpoint.SendCommand($@"start {baseFilePath + @"\Apps" + $@"\{SelectedApp.FileName}.lnk"}");
+            var baseFilePath = Tools.GetBaseFilePathForCommands();
+            Tools.SendCommand($@"start {baseFilePath + @"\Apps" + $@"\{SelectedApp.AppName}.lnk"}");
         }
         public void AddButton()
         {
@@ -155,61 +150,59 @@ namespace AppLoaderUI.ViewModels
             openFileDialog.Filter = "exe files (*.exe)|*.exe|All files (*.*)|*.*";
             if (openFileDialog.ShowDialog() == true)
             {
+                var appName = Tools.GetAppFromPath(openFileDialog.FileName);
                 try
-                {
-                    if (Apps.Where(e => e.FileName == _appEndpoint.GetAppFromPath(openFileDialog.FileName)).FirstOrDefault() is null)
+                {   // Check if app exists in Apps Folder
+                    if (Apps.Where(e => e.AppName == appName).FirstOrDefault() is null)
                     {
-                        var appFolderPath = _appEndpoint.GetBaseFilePath() + @$"\Apps\{_appEndpoint.GetAppFromPath(openFileDialog.FileName)}.lnk";
-                        _appEndpoint.CreateShortcut(openFileDialog.FileName, appFolderPath);
+                        var appFolderPath =  Directory.GetCurrentDirectory() + @$"\Apps\{appName}.lnk";
+                        Tools.CreateShortcut(openFileDialog.FileName, appFolderPath);
 
                         //Creating an icon file with the same naming as the shortcut to display on the UI
                         //Not sure of the reason of the warning, the icon is still created
                         #pragma warning disable CA1416 // Validate platform compatibility
                         System.Drawing.Icon.ExtractAssociatedIcon(openFileDialog.FileName)
                             .ToBitmap()
-                            .Save(_appEndpoint.GetBaseFilePath() + $@"\Apps\{_appEndpoint.GetAppFromPath(openFileDialog.FileName)}.ico");
+                            .Save(Directory.GetCurrentDirectory()+ $@"\Apps\{appName}.ico");
                         #pragma warning restore CA1416 // Validate platform compatibility
                         ErrorMessage = "";
                     }
                 }
                 catch (Exception ex)
                 {
-                    if (ex.Message.Contains("a generic error") is false)
+                    if (ex.Message.Contains("A generic error") is false)
                     {
                         ErrorMessage = ex.Message;
                     }
                 }
             }
             //Refresh binding list of apps
-            var apps = _appEndpoint.GetListOfApps();
+            var apps = Tools.GetListOfApps();
             Apps = new BindingList<AppModel>(apps);
         }
 
         
-        public void DeleteButton(AppModel selectedApp)
+        public void DeleteButton()
         {
-            var appName = SelectedApp.FileName;
+            var appName = SelectedApp.AppName;
             Apps.Remove(SelectedApp);
             SelectedApp = null;
-            var baseFilePath = _appEndpoint.GetBaseFilePathForCommands();
-            _appEndpoint.SendCommand($"del /f {baseFilePath + @"\Apps" + $@"\{appName}*"}");
+            var baseFilePath = Tools.GetBaseFilePathForCommands();
+            Tools.SendCommand($"del /f {baseFilePath + @"\Apps" + $@"\{appName}*"}");
         }
 
         public void AddToStartup(bool condition)
         {
-            var baseFilePath = _appEndpoint.GetBaseFilePath();
-            var baseFilePathCommand = _appEndpoint.GetBaseFilePathForCommands();
-            var userProfilePath = _appEndpoint.GetUserProfilePath();
+            var userProfilePath = Tools.GetUserProfilePath();
             var startUpFolderPath = userProfilePath + @"\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup";
             if (condition is true)
             {
                 foreach (var app in Apps)
                 {
-                    var shortcutAppPath = $@"{baseFilePath + @"\Apps" + $@"\{app.FileName}.lnk"}";
-                    var shortcutAppPathCommand = $@"{baseFilePathCommand + @"\Apps" + $@"\{app.FileName}.lnk"}";
-                    var executableAppPath = _appEndpoint.GetShortcutTargetFile(shortcutAppPath);
-                    var startUpFolderAppPath = startUpFolderPath + $@"\{app.FileName}.lnk";
-                    _appEndpoint.CreateShortcut(executableAppPath, startUpFolderAppPath);
+                    var shortcutAppPath = Directory.GetCurrentDirectory()+ $@"\Apps\{app.AppName}.lnk";
+                    var executableAppPath = Tools.GetShortcutTargetFile(shortcutAppPath);
+                    var startUpFolderAppPath = startUpFolderPath + $@"\{app.AppName}.lnk";
+                    Tools.CreateShortcut(executableAppPath, startUpFolderAppPath);
                 }
             }
             if (condition is false)
@@ -218,10 +211,10 @@ namespace AppLoaderUI.ViewModels
                 startUpShortcuts = startUpShortcuts.Where(e => !e.Contains("desktop.ini")).ToList();
                 foreach (var shortcut in startUpShortcuts)
                 {
-                    if (Apps.Where(e => shortcut.Contains(e.FileName)).FirstOrDefault() is not null)
+                    if (Apps.Where(e => shortcut.Contains(e.AppName)).FirstOrDefault() is not null)
                     {
-                        var normalizedShortcut = _appEndpoint.NormalizeFilePath(shortcut);
-                        _appEndpoint.SendCommand($"del /f {normalizedShortcut}");
+                        var normalizedShortcut = Tools.NormalizeFilePath(shortcut);
+                        Tools.SendCommand($"del /f {normalizedShortcut}");
                     }
                 }
 
@@ -230,7 +223,7 @@ namespace AppLoaderUI.ViewModels
 
         public bool AreAppsInStartup()
         {
-            var userProfilePath = _appEndpoint.GetUserProfilePath();
+            var userProfilePath = Tools.GetUserProfilePath();
             var startUpFolderPath = userProfilePath + @"\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup";
             var startUpFilePaths = Directory.GetFiles(startUpFolderPath).ToList();
             var counter = startUpFilePaths.Count - 1;
@@ -242,7 +235,7 @@ namespace AppLoaderUI.ViewModels
             {
                 foreach(var filePath in startUpFilePaths)
                 {
-                    if (filePath.Contains(app.FileName))
+                    if (filePath.Contains(app.AppName))
                     {
                         counter--;
                     }
