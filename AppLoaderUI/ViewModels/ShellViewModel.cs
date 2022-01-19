@@ -58,7 +58,7 @@ namespace AppLoaderUI.ViewModels
                 NotifyOfPropertyChange(() => IsOnStartup);
                 NotifyOfPropertyChange(() => CanDeleteButton);
                 NotifyOfPropertyChange(() => CanStartButton);
-                AddToStartup(value);
+                Tools.AddToStartup(value, Apps);
             }
         }
 
@@ -73,12 +73,12 @@ namespace AppLoaderUI.ViewModels
                 }
         }
 
-        public bool IsErrorVisible 
+        public bool CanStartButton
         {
-            get 
+            get
             {
                 bool output = false;
-                if (ErrorMessage?.Count() > 0)
+                if (SelectedApp is not null || IsOnStartup == false)
                 {
                     output = true;
                 }
@@ -99,20 +99,18 @@ namespace AppLoaderUI.ViewModels
             }
         }
 
-        public bool CanStartButton
+        public bool IsErrorVisible
         {
             get
             {
                 bool output = false;
-                if (SelectedApp is not null || IsOnStartup == false)
+                if (ErrorMessage?.Count() > 0)
                 {
                     output = true;
                 }
                 return output;
             }
         }
-
-        
 
         public async Task LoadApps()
         {
@@ -122,7 +120,8 @@ namespace AppLoaderUI.ViewModels
             await Task.Delay(1000);
             var apps = Tools.GetListOfApps();
             Apps = new BindingList<AppModel>(apps);
-            if (AreAppsInStartup() is true)
+
+            if (Tools.AreAppsInStartup(Apps) is true)
             {
                 IsOnStartup = true;
             }
@@ -146,39 +145,16 @@ namespace AppLoaderUI.ViewModels
         }
         public void AddButton()
         {
-            OpenFileDialog openFileDialog = new OpenFileDialog();
-            openFileDialog.Filter = "exe files (*.exe)|*.exe|All files (*.*)|*.*";
-            if (openFileDialog.ShowDialog() == true)
+            var returnMessage = FileDialogApp.OpenFileDialogApp(Apps);
+            if (returnMessage is null)
             {
-                var appName = Tools.GetAppFromPath(openFileDialog.FileName);
-                try
-                {   // Check if app exists in Apps Folder
-                    if (Apps.Where(e => e.AppName == appName).FirstOrDefault() is null)
-                    {
-                        var appFolderPath =  Directory.GetCurrentDirectory() + @$"\Apps\{appName}.lnk";
-                        Tools.CreateShortcut(openFileDialog.FileName, appFolderPath);
-
-                        //Creating an icon file with the same naming as the shortcut to display on the UI
-                        //Not sure of the reason of the warning, the icon is still created
-                        #pragma warning disable CA1416 // Validate platform compatibility
-                        System.Drawing.Icon.ExtractAssociatedIcon(openFileDialog.FileName)
-                            .ToBitmap()
-                            .Save(Directory.GetCurrentDirectory()+ $@"\Apps\{appName}.ico");
-                        #pragma warning restore CA1416 // Validate platform compatibility
-                        ErrorMessage = "";
-                    }
-                }
-                catch (Exception ex)
-                {
-                    if (ex.Message.Contains("A generic error") is false)
-                    {
-                        ErrorMessage = ex.Message;
-                    }
-                }
+                var apps = Tools.GetListOfApps();
+                Apps = new BindingList<AppModel>(apps);
             }
-            //Refresh binding list of apps
-            var apps = Tools.GetListOfApps();
-            Apps = new BindingList<AppModel>(apps);
+            else
+            {
+                ErrorMessage = returnMessage;
+            }
         }
 
         
@@ -190,64 +166,5 @@ namespace AppLoaderUI.ViewModels
             var baseFilePath = Tools.GetBaseFilePathForCommands();
             Tools.SendCommand($"del /f {baseFilePath + @"\Apps" + $@"\{appName}*"}");
         }
-
-        public void AddToStartup(bool condition)
-        {
-            var userProfilePath = Tools.GetUserProfilePath();
-            var startUpFolderPath = userProfilePath + @"\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup";
-            if (condition is true)
-            {
-                foreach (var app in Apps)
-                {
-                    var shortcutAppPath = Directory.GetCurrentDirectory()+ $@"\Apps\{app.AppName}.lnk";
-                    var executableAppPath = Tools.GetShortcutTargetFile(shortcutAppPath);
-                    var startUpFolderAppPath = startUpFolderPath + $@"\{app.AppName}.lnk";
-                    Tools.CreateShortcut(executableAppPath, startUpFolderAppPath);
-                }
-            }
-            if (condition is false)
-            {
-                var startUpShortcuts = Directory.GetFiles(startUpFolderPath).ToList();
-                startUpShortcuts = startUpShortcuts.Where(e => !e.Contains("desktop.ini")).ToList();
-                foreach (var shortcut in startUpShortcuts)
-                {
-                    if (Apps.Where(e => shortcut.Contains(e.AppName)).FirstOrDefault() is not null)
-                    {
-                        var normalizedShortcut = Tools.NormalizeFilePath(shortcut);
-                        Tools.SendCommand($"del /f {normalizedShortcut}");
-                    }
-                }
-
-            }
-        }
-
-        public bool AreAppsInStartup()
-        {
-            var userProfilePath = Tools.GetUserProfilePath();
-            var startUpFolderPath = userProfilePath + @"\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup";
-            var startUpFilePaths = Directory.GetFiles(startUpFolderPath).ToList();
-            var counter = startUpFilePaths.Count - 1;
-            if (counter == 0)
-            {
-                return false;
-            }
-            foreach (var app in Apps)
-            {
-                foreach(var filePath in startUpFilePaths)
-                {
-                    if (filePath.Contains(app.AppName))
-                    {
-                        counter--;
-                    }
-                }
-            }
-            if (counter == 0)
-            {
-                return true;
-            }
-            return false;
-        }
     }
 }
-
-//https://stackoverflow.com/questions/9414152/get-target-of-shortcut-folder

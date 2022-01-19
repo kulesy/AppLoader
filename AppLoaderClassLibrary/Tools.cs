@@ -3,6 +3,7 @@ using IWshRuntimeLibrary;
 using Shell32;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -14,23 +15,108 @@ namespace AppLoaderClassLibrary
 {
     public static class Tools
     {
-        public static void MakeAppFolder()
+        public static void SendCommand(string command)
         {
-            // Get directories in current base directory and check if App folder is avalible
-            // If not then create folder
-            List<string> dirs = Directory.GetDirectories(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)).ToList();
-            foreach (var dir in dirs)
+            var normalizedCommand = "/C " + command;
+            Process proc = new Process
             {
-                if (dir.Contains("Apps"))
+                StartInfo = new ProcessStartInfo
                 {
+                    FileName = "cmd",
+                    Arguments = normalizedCommand,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true // Hide console window
+                }
+            };
+
+            proc.Start();
+            proc.WaitForExit();//May need to wait for the process to exit too
+        }
+
+        public static string GetAppLoaderPath()
+        {
+            //The base directory starts in a weird folder
+            //Therefore some editing of the path needs to be done to bring it to the AppLoader folder
+            var basePath = Directory.GetCurrentDirectory();
+            var basePathSplit = basePath.Split(@"\").ToList();
+            var appLoaderIndex = basePathSplit.IndexOf("AppLoader");
+            // Determine the number of folders/files need to be skipped
+            var offset = basePathSplit.Count() - appLoaderIndex;
+            offset--;
+            var appLoaderPathSplit = basePathSplit.SkipLast(offset);
+            var appLoaderPath = string.Join(@"\", appLoaderPathSplit);
+            return appLoaderPath;
+        }
+
+        public static string GetBaseFilePathForCommands()
+        {
+            return NormalizeFilePath(Directory.GetCurrentDirectory());
+        }
+
+        public static string GetUserProfilePath()
+        {
+            // Need User Profile to direct to startup folder
+            var basePath = Directory.GetCurrentDirectory();
+            var basePathSplit = basePath.Split(@"\").ToList();
+            // Determine the number of folders/files need to be skipped
+            var offset = basePathSplit.Count() - 2;
+            offset--;
+            var profilePathSplit = basePathSplit.SkipLast(offset);
+            var profilePath = string.Join(@"\", profilePathSplit);
+            return profilePath;
+        }
+
+        public static string NormalizeFilePath(string filePath)
+        {
+            // Putting spaced folders/files in quotes for commands
+            var filePathSplit = filePath.Split(@"\");
+            var basePath = "";
+
+            foreach (var path in filePathSplit)
+            {
+                var normalizedPath = path;
+                if (path.Contains(" "))
+                {
+                    normalizedPath = $"\"{path}\"";
+                }
+                if (filePathSplit.Last() == path)
+                {
+                    basePath += normalizedPath;
                     break;
                 }
-                // If this if statement is triggered it means that no App folder has been found
-                if (dirs[dirs.Count - 1] == dir)
-                {
-                    SendCommand($@"mkdir {GetBaseFilePathForCommands()}\Apps");
-                }
+                basePath += normalizedPath + @"\";
             }
+
+            return basePath;
+        }
+
+        [STAThread]
+        public static string GetExePathFromShortcut(string shortcutFilename)
+        {
+            string pathOnly = Path.GetDirectoryName(shortcutFilename);
+            string filenameOnly = Path.GetFileName(shortcutFilename);
+
+            Shell shell = new Shell();
+            Shell32.Folder folder = shell.NameSpace(pathOnly);
+            FolderItem folderItem = folder.ParseName(filenameOnly);
+
+            if (folderItem != null)
+            {
+                ShellLinkObject link = (ShellLinkObject)folderItem.GetLink;
+                return link.Path;
+            }
+
+            return string.Empty;
+        }
+
+        public static string GetAppNameFromPath(string path)
+        {
+            //Getting just the app name
+            var appNameWithExtension = path.Split(@"\").Last();
+            var appName = appNameWithExtension.Split(".").First();
+            return appName;
         }
         public static List<AppModel> GetListOfApps()
         {
@@ -49,6 +135,25 @@ namespace AppLoaderClassLibrary
             return apps;
         }
 
+        public static void MakeAppFolder()
+        {
+            // Get directories in current base directory 
+            List<string> dirs = Directory.GetDirectories(Path.GetDirectoryName(Assembly.GetEntryAssembly().Location)).ToList();
+            // Check if App folder is avalible, if not then create folder
+            foreach (var dir in dirs)
+            {
+                if (dir.Contains("Apps"))
+                {
+                    break;
+                }
+                // If this if statement is triggered it means that no App folder has been found
+                if (dirs[dirs.Count - 1] == dir)
+                {
+                    SendCommand($@"mkdir {GetBaseFilePathForCommands()}\Apps");
+                }
+            }
+        }
+
         public static void CleanAppsFolder()
         {
             //This is used for cleaning up any icon files that are unassigned to a shortcut.
@@ -58,6 +163,7 @@ namespace AppLoaderClassLibrary
             List<string> shortcutPaths = Directory.GetFiles(filePath).Where(e => e.Contains(".lnk")).ToList();
             //Get list of files with only .ico extension
             List<string> iconPaths = Directory.GetFiles(filePath).Where(e => e.Contains(".ico")).ToList();
+
             if (shortcutPaths.Count != iconPaths.Count)
             {
                 //if only icon files in folder delete all
@@ -83,64 +189,11 @@ namespace AppLoaderClassLibrary
                         // If this if statement is triggered it means that the icon file is unassigned to a shortcut file, therefore delete it
                         if (shortcutPaths[shortcutPaths.Count - 1] == shortcutPath)
                         {
-                            SendCommand($"del /f {GetBaseFilePathForCommands() + @"\Apps" + $@"\{GetAppFromPath(iconPath)}.ico"}");
+                            SendCommand($"del /f {GetBaseFilePathForCommands() + @"\Apps" + $@"\{GetAppNameFromPath(iconPath)}.ico"}");
                         }
                     }
                 }
             }
-        }
-
-
-        // Tools
-
-        public static string GetAppLoaderPath()
-        {
-            //The base directory starts in a weird folder
-            //Therefore some editing of the path needs to be done to bring it to the AppLoader folder
-            var basePath = Directory.GetCurrentDirectory();
-            var basePathSplit = basePath.Split(@"\").ToList();
-            var appLoaderIndex = basePathSplit.IndexOf("AppLoader");
-            // Determine the number of folders/files need to be skipped
-            var offset = basePathSplit.Count() - appLoaderIndex;
-            offset--;
-            var appLoaderPathSplit = basePathSplit.SkipLast(offset);
-            var appLoaderPath = string.Join(@"\", appLoaderPathSplit);
-            return appLoaderPath;
-        }
-
-        public static string GetBaseFilePathForCommands()
-        {
-            return NormalizeFilePath(Directory.GetCurrentDirectory());
-        }
-
-        public static string GetUserProfilePath()
-        {
-            //Boiler plate code from GetBaseFilePath()
-            //But is neccesary some commands in the cmd require folders that contain spaces to be in quotes
-            var fullBasePath = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
-            var fullBasePathSplit = fullBasePath.Split(@"\");
-            var basePathSplit = fullBasePathSplit.SkipLast(fullBasePathSplit.Count() - 3);
-            var basePath = string.Join(@"\", basePathSplit);
-            return basePath;
-        }
-        public static void SendCommand(string command)
-        {
-            var normalizedCommand = "/C " + command;
-            Process proc = new Process
-            {
-                StartInfo = new ProcessStartInfo
-                {
-                    FileName = "cmd",
-                    Arguments = normalizedCommand,
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true // Hide console window
-                }
-            };
-
-            proc.Start();
-            proc.WaitForExit();//May need to wait for the process to exit too
         }
 
         public static void CreateShortcut(string targetPath, string savePath)
@@ -158,57 +211,72 @@ namespace AppLoaderClassLibrary
                 shortcut.Save();
 
             }
+
             else
             {
                 throw new("Executable cannot be an update");
             }
         }
 
-        public static string GetAppFromPath(string path)
+        public static void AddToStartup(bool condition, BindingList<AppModel> apps)
         {
-            //Getting just the app name
-            var appNameWithExtension = path.Split(@"\").Last();
-            var appName = appNameWithExtension.Split(".").First();
-            return appName;
-        }
+            var userProfilePath = GetUserProfilePath();
+            var startUpFolderPath = userProfilePath + @"\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup";
 
-        [STAThread]
-        public static string GetShortcutTargetFile(string shortcutFilename)
-        {
-            string pathOnly = Path.GetDirectoryName(shortcutFilename);
-            string filenameOnly = Path.GetFileName(shortcutFilename);
-
-            Shell shell = new Shell();
-            Shell32.Folder folder = shell.NameSpace(pathOnly);
-            FolderItem folderItem = folder.ParseName(filenameOnly);
-            if (folderItem != null)
+            if (condition is true)
             {
-                ShellLinkObject link = (ShellLinkObject)folderItem.GetLink;
-                return link.Path;
+                foreach (var app in apps)
+                {
+                    var shortcutAppPath = Directory.GetCurrentDirectory() + $@"\Apps\{app.AppName}.lnk";
+                    var executableAppPath = GetExePathFromShortcut(shortcutAppPath);
+                    var startUpFolderAppPath = startUpFolderPath + $@"\{app.AppName}.lnk";
+                    CreateShortcut(executableAppPath, startUpFolderAppPath);
+                }
             }
 
-            return string.Empty;
+            if (condition is false)
+            {
+                var startUpShortcuts = Directory.GetFiles(startUpFolderPath).ToList();
+                foreach (var shortcut in startUpShortcuts)
+                {
+                    if (apps.Where(e => shortcut.Contains(e.AppName)).FirstOrDefault() is not null)
+                    {
+                        var normalizedShortcut = NormalizeFilePath(shortcut);
+                        SendCommand($"del /f {normalizedShortcut}");
+                    }
+                }
+            }
         }
 
-        public static string NormalizeFilePath(string filePath)
+        public static bool AreAppsInStartup(BindingList<AppModel> apps)
         {
-            var filePathSplit = filePath.Split(@"\");
-            var basePath = "";
-            foreach (var path in filePathSplit)
+            var userProfilePath = GetUserProfilePath();
+            var startUpFolderPath = userProfilePath + @"\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup";
+            var startUpFilePaths = Directory.GetFiles(startUpFolderPath).ToList();
+            var counter = startUpFilePaths.Count - 1;
+
+            if (counter == 0)
             {
-                var normalizedPath = path;
-                if (path.Contains(" "))
-                {
-                    normalizedPath = $"\"{path}\"";
-                }
-                if (filePathSplit.Last() == path)
-                {
-                    basePath += normalizedPath;
-                    break;
-                }
-                basePath += normalizedPath + @"\";
+                return false;
             }
-            return basePath;
+
+            foreach (var app in apps)
+            {
+                foreach (var filePath in startUpFilePaths)
+                {
+                    if (filePath.Contains(app.AppName))
+                    {
+                        counter--;
+                    }
+                }
+            }
+
+            if (counter == 0)
+            {
+                return true;
+            }
+
+            return false;
         }
     }
 }
