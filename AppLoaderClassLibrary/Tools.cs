@@ -203,13 +203,14 @@ namespace AppLoaderClassLibrary
             if (targetPath.Contains("Update.exe") is false)
             {
                 WshShell shell = new WshShell();
+
                 //Where the shortcut of the app will be saved
                 string shortcutAddress = savePath;
                 IWshShortcut shortcut = (IWshShortcut)shell.CreateShortcut(shortcutAddress);
+
                 //The path of the app that you want to make into a shortcut
                 shortcut.TargetPath = targetPath;
                 shortcut.Save();
-
             }
 
             else
@@ -223,6 +224,7 @@ namespace AppLoaderClassLibrary
             var userProfilePath = GetUserProfilePath();
             var startUpFolderPath = userProfilePath + @"\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup";
 
+            // If checkbox is checked
             if (condition is true)
             {
                 foreach (var app in apps)
@@ -234,11 +236,13 @@ namespace AppLoaderClassLibrary
                 }
             }
 
+            // If checkbox is empty
             if (condition is false)
             {
                 var startUpShortcuts = Directory.GetFiles(startUpFolderPath).ToList();
                 foreach (var shortcut in startUpShortcuts)
                 {
+                    // If app is contained in the shortcut 
                     if (apps.Where(e => shortcut.Contains(e.AppName)).FirstOrDefault() is not null)
                     {
                         var normalizedShortcut = NormalizeFilePath(shortcut);
@@ -250,16 +254,18 @@ namespace AppLoaderClassLibrary
 
         public static bool AreAppsInStartup(BindingList<AppModel> apps)
         {
+            // This method determines whether the checkbox should be checked based on the apps in the startup
             var userProfilePath = GetUserProfilePath();
             var startUpFolderPath = userProfilePath + @"\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup";
             var startUpFilePaths = Directory.GetFiles(startUpFolderPath).ToList();
-            var counter = startUpFilePaths.Count - 1;
+            var counter = apps.Count;
 
+            // If there is no apps in the startup
             if (counter == 0)
             {
                 return false;
             }
-
+            // Remove only from startup the apps reflected in the project apps folder
             foreach (var app in apps)
             {
                 foreach (var filePath in startUpFilePaths)
@@ -270,7 +276,7 @@ namespace AppLoaderClassLibrary
                     }
                 }
             }
-
+            // If all apps are reflected in startup folder then return true
             if (counter == 0)
             {
                 return true;
